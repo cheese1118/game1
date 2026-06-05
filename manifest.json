@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幼升小暑假自習大冒險V01</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka One', 'Noto Sans TC', sans-serif;
+            background-color: #fef3c7; /* 溫馨鵝黃底色 */
+            user-select: none;
+        }
+        /* 讓注音符號與國字排版更美觀 */
+        ruby {
+            ruby-position: over;
+            font-size: 1.8rem;
+            font-weight: 900;
+            margin: 0 0.15em;
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            line-height: 1.2;
+        }
+        rt {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #475569; /* 深灰色注音，更清晰 */
+            letter-spacing: 0.1em;
+            padding-bottom: 2px;
+            display: block;
+            line-height: 1;
+        }
+        /* 縮小版注音，用於選項與次要說明 */
+        .ruby-sm ruby {
+            font-size: 1.25rem;
+        }
+        .ruby-sm rt {
+            font-size: 0.6rem;
+        }
+        .bouncing {
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+
+    <!-- PWA 設定 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="自習大冒險">
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+</head>
+<body class="min-h-screen flex flex-col justify-between text-slate-800 overflow-x-hidden">
+
+    <!-- 音效與語音控制器 -->
+    <script>
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        // 1. 播放效果音
+        function playSound(type) {
+            initAudio();
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                osc.start(now);
+                osc.stop(now + 0.4);
+            } else if (type === 'wrong') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, now); // A3
+                osc.frequency.exponentialRampToValueAtTime(110, now + 0.3);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } else if (type === 'level-up') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(261.63, now); 
+                osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.6);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                osc.start(now);
+                osc.stop(now + 0.6);
+            } else if (type === 'pop') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            }
+        }
+
+        // 2. 瀏覽器語音朗讀 (TTS) - 專為台灣語音優化
+        let speakEnabled = true;
+        function speak(text) {
+            if (!speakEnabled) return;
+            // 先停止之前的說話
+            window.speechSynthesis.cancel();
+            
+            // 去除 HTML 標籤（如 <ruby>, <rt>），只留下純文字供語音讀出
+            const cleanText = text.replace(/<[^>]*>/g, "");
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'zh-TW';
+            utterance.rate = 0.85; // 稍微放慢速度，符合幼童聽力
+            utterance.pitch = 1.1; // 稍微拉高音調，聽起來更親切活潑
+            
+            // 尋找台灣微軟或 Google 語音
+            const voices = window.speechSynthesis.getVoices();
+            const twVoice = voices.find(v => v.lang.includes('ZH-TW') || v.lang.includes('zh-TW'));
+            if (twVoice) utterance.voice = twVoice;
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // 切換語音靜音
+        function toggleSpeak() {
+            speakEnabled = !speakEnabled;
+            const btn = document.getElementById('speak-toggle-btn');
+            if (speakEnabled) {
+                btn.innerHTML = '🔊 語音：開';
+                btn.className = 'bg-green-500 text-white font-bold text-xs px-3 py-1.5 rounded-full';
+                speak("語音功能已經打開囉！");
+            } else {
+                btn.innerHTML = '🔇 語音：關';
+                btn.className = 'bg-slate-400 text-white font-bold text-xs px-3 py-1.5 rounded-full';
+                window.speechSynthesis.cancel();
+            }
+        }
+    </script>
+
+    <!-- 主應用容器 -->
+    <div id="app" class="w-full max-w-md mx-auto bg-white min-h-screen shadow-2xl flex flex-col relative overflow-hidden pb-20">
+        
+        <!-- 頂部狀態列 -->
+        <header class="bg-gradient-to-r from-amber-400 to-orange-400 p-4 rounded-b-3xl shadow-md text-white">
+            <div class="flex justify-between items-center">
+                <!-- 玩家頭像與名字 -->
+                <div class="flex items-center space-x-2" onclick="showCharacterModal()">
+                    <span id="player-avatar" class="text-3xl bg-white/30 p-1.5 rounded-full cursor-pointer hover:scale-110 transition-transform">🐯</span>
+                    <div>
+                        <h2 id="player-name" class="font-bold text-sm tracking-wide">小勇士</h2>
+                        <span class="text-xs bg-amber-600/50 px-2 py-0.5 rounded-full">Lv.1 準小一生</span>
+                    </div>
+                </div>
+                <!-- 語音控制與星幣 -->
+                <div class="flex flex-col items-end space-y-1">
+                    <button id="speak-toggle-btn" onclick="toggleSpeak()" class="bg-green-500 text-white font-bold text-xs px-3 py-1 rounded-full shadow-sm">
+                        🔊 語音：開
+                    </button>
+                    <div class="flex space-x-2 text-xs font-bold">
+                        <div class="flex items-center space-x-1 bg-black/20 px-2 py-0.5 rounded-full">
+                            <span>⭐</span>
+                            <span id="star-count">0</span>
+                        </div>
+                        <div class="flex items-center space-x-1 bg-black/20 px-2 py-0.5 rounded-full">
+                            <span>🪙</span>
+                            <span id="coin-count">50</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 冒險主地圖 (Main Map) -->
+        <main id="main-map" class="flex-1 p-4 flex flex-col justify-center items-center space-y-6">
+            <div class="text-center">
+                <h1 class="text-2xl font-black text-amber-600 tracking-wider bouncing flex items-center justify-center gap-1">
+                    <ruby>暑<rt>ㄕㄨˇ</rt></ruby><ruby>假<rt>ㄐㄧㄚˋ</rt></ruby><ruby>自<rt>ㄗˋ</rt></ruby><ruby>習<rt>ㄒㄧˊ</rt></ruby><ruby>大<rt>ㄉㄚˋ</rt></ruby><ruby>冒<rt>ㄇㄠˋ</rt></ruby><ruby>險<rt>ㄒㄧㄢˇ</rt></ruby>
+                </h1>
+                <p class="text-xs text-slate-500 mt-1">點擊島嶼，開啟你的升小一魔法特訓！</p>
+            </div>
+
+            <!-- 地圖島嶼列表 -->
+            <div class="w-full space-y-4 max-h-[58vh] overflow-y-auto no-scrollbar py-2">
+                
+                <!-- 1. ㄅㄆㄇ島 -->
+                <button onclick="startBopomofoGame()" class="w-full bg-rose-100 hover:bg-rose-200 border-2 border-rose-300 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all active:scale-95 text-left">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">🎒</span>
+                        <div class="ruby-sm">
+                            <h3 class="font-bold text-rose-800 text-base">
+                                <ruby>ㄅ<rt>ㄅ</rt></ruby><ruby>ㄆ<rt>ㄆ</rt></ruby><ruby>ㄇ<rt>ㄇ</rt></ruby>
+                                <ruby>魔<rt>ㄇㄛˊ</rt></ruby><ruby>法<rt>ㄈㄚˇ</rt></ruby><ruby>島<rt>ㄉㄠˇ</rt></ruby>
+                            </h3>
+                            <p class="text-xs text-rose-600 mt-1">認讀注音符號與基礎拼音</p>
+                        </div>
+                    </div>
+                    <span class="text-rose-500 font-bold text-sm">挑戰 👉</span>
+                </button>
+
+                <!-- 2. 數學島 -->
+                <button onclick="startMathGame()" class="w-full bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all active:scale-95 text-left">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">🧮</span>
+                        <div class="ruby-sm">
+                            <h3 class="font-bold text-blue-800 text-base">
+                                <ruby>精<rt>ㄐㄧㄥ</rt></ruby><ruby>靈<rt>ㄌㄧㄥˊ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>島<rt>ㄉㄠˇ</rt></ruby>
+                            </h3>
+                            <p class="text-xs text-blue-600 mt-1">看圖數數與 10 以內的加減法</p>
+                        </div>
+                    </div>
+                    <span class="text-blue-500 font-bold text-sm">挑戰 👉</span>
+                </button>
+
+                <!-- 3. 數字跳跳樂（原版整理：保留乘法累加玩法，降低名稱壓力） -->
+                <button onclick="startMultiplicationGame()" class="w-full bg-emerald-100 hover:bg-emerald-200 border-2 border-emerald-300 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all active:scale-95 text-left">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">🐸</span>
+                        <div class="ruby-sm">
+                            <h3 class="font-bold text-emerald-800 text-base">
+                                <ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>字<rt>ㄗˋ</rt></ruby><ruby>跳<rt>ㄊㄧㄠˋ</rt></ruby><ruby>跳<rt>ㄊㄧㄠˋ</rt></ruby><ruby>樂<rt>ㄌㄜˋ</rt></ruby>
+                            </h3>
+                            <p class="text-xs text-emerald-600 mt-1">跟著小青蛙練習數字累加</p>
+                        </div>
+                    </div>
+                    <span class="text-emerald-500 font-bold text-sm">挑戰 👉</span>
+                </button>
+
+                <!-- 4. 英文單字泡泡 -->
+                <button onclick="startEnglishGame()" class="w-full bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all active:scale-95 text-left">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">🫧</span>
+                        <div class="ruby-sm">
+                            <h3 class="font-bold text-purple-800 text-base">
+                                <ruby>英<rt>ㄧㄥ</rt></ruby><ruby>文<rt>ㄨㄣˊ</rt></ruby>
+                                <ruby>泡<rt>ㄆㄠˋ</rt></ruby><ruby>泡<rt>ㄆㄠˋ</rt></ruby><ruby>森<rt>ㄙㄣ</rt></ruby><ruby>林<rt>ㄌㄧㄣˊ</rt></ruby>
+                            </h3>
+                            <p class="text-xs text-purple-600 mt-1">大小寫連連看與動物單字拼圖</p>
+                        </div>
+                    </div>
+                    <span class="text-purple-500 font-bold text-sm">挑戰 👉</span>
+                </button>
+
+                <!-- 5. 弟子規智慧樹 -->
+                <button onclick="startDiziguiGame()" class="w-full bg-amber-100 hover:bg-amber-200 border-2 border-amber-300 rounded-2xl p-3 flex items-center justify-between shadow-sm transition-all active:scale-95 text-left">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-4xl">📜</span>
+                        <div class="ruby-sm">
+                            <h3 class="font-bold text-amber-800 text-base">
+                                <ruby>弟<rt>ㄉㄧˋ</rt></ruby><ruby>子<rt>ㄗˇ</rt></ruby><ruby>規<rt>ㄍㄨㄟ</rt></ruby>
+                                <ruby>智<rt>ㄓ</rt></ruby><ruby>慧<rt>ㄏㄨㄟˋ</rt></ruby><ruby>樹<rt>ㄕㄨˋ</rt></ruby>
+                            </h3>
+                            <p class="text-xs text-amber-600 mt-1">品德小故事與禮貌對話學習</p>
+                        </div>
+                    </div>
+                    <span class="text-amber-500 font-bold text-sm">挑戰 👉</span>
+                </button>
+
+            </div>
+        </main>
+
+        <!-- 遊戲互動區 (隱藏，依據所選關卡載入) -->
+        <main id="game-zone" class="hidden flex-1 p-4 flex flex-col justify-between"></main>
+
+        <!-- 底部導覽列 -->
+        <footer class="absolute bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex justify-around items-center px-4">
+            <button onclick="goHome()" class="flex flex-col items-center justify-center text-amber-500">
+                <span class="text-2xl">🗺️</span>
+                <span class="text-[10px] font-bold">地圖</span>
+            </button>
+            <button onclick="showShop()" class="flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
+                <span class="text-2xl">🧸</span>
+                <span class="text-[10px] font-bold">獎品屋</span>
+            </button>
+            <button onclick="showInfo()" class="flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
+                <span class="text-2xl">💡</span>
+                <span class="text-[10px] font-bold">家長指引</span>
+            </button>
+        </footer>
+
+        <!-- 全域彈出通知視窗 (取代 alert) -->
+        <div id="custom-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-xs text-center border-4 border-amber-400 shadow-2xl transform scale-95 transition-transform">
+                <div id="modal-emoji" class="text-5xl mb-2">🎉</div>
+                <h3 id="modal-title" class="text-xl font-bold text-slate-800 mb-2">太棒了！</h3>
+                <p id="modal-message" class="text-slate-600 text-sm mb-4">你完成了挑戰！獲得了 5 顆星星！</p>
+                <button id="modal-btn" class="bg-amber-400 hover:bg-amber-500 text-white font-bold px-6 py-2 rounded-full shadow-md active:scale-95 transition-transform w-full">確認</button>
+            </div>
+        </div>
+
+        <!-- 角色設定視窗 -->
+        <div id="character-modal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl p-6 w-full max-w-xs border-4 border-orange-400 shadow-2xl">
+                <h3 class="text-xl font-bold text-slate-800 text-center mb-4">🌟 設定我的冒險家</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 block mb-1">小勇士暱稱：</label>
+                        <input id="char-name-input" type="text" class="w-full border-2 border-orange-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-orange-400 font-bold" placeholder="輸入名字">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 block mb-1">選擇頭像：</label>
+                        <div class="grid grid-cols-5 gap-2 text-2xl">
+                            <button onclick="selectAvatar('🐯')" class="p-1 hover:bg-orange-100 rounded">🐯</button>
+                            <button onclick="selectAvatar('🦁')" class="p-1 hover:bg-orange-100 rounded">🦁</button>
+                            <button onclick="selectAvatar('🐰')" class="p-1 hover:bg-orange-100 rounded">🐰</button>
+                            <button onclick="selectAvatar('🦊')" class="p-1 hover:bg-orange-100 rounded">🦊</button>
+                            <button onclick="selectAvatar('🐼')" class="p-1 hover:bg-orange-100 rounded">🐼</button>
+                            <button onclick="selectAvatar('🐱')" class="p-1 hover:bg-orange-100 rounded">🐱</button>
+                            <button onclick="selectAvatar('🦕')" class="p-1 hover:bg-orange-100 rounded">🦕</button>
+                            <button onclick="selectAvatar('🦄')" class="p-1 hover:bg-orange-100 rounded">🦄</button>
+                            <button onclick="selectAvatar('🐵')" class="p-1 hover:bg-orange-100 rounded">🐵</button>
+                            <button onclick="selectAvatar('🐝')" class="p-1 hover:bg-orange-100 rounded">🐝</button>
+                        </div>
+                    </div>
+                    <button onclick="saveCharacter()" class="w-full bg-orange-400 hover:bg-orange-500 text-white font-bold py-2 rounded-xl mt-2 shadow-md">出發冒險！</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 遊戲核心邏輯 -->
+    <script>
+        // 玩家狀態
+        let player = {
+            name: "小勇士",
+            avatar: "🐯",
+            stars: 0,
+            coins: 50,
+            unlockedToys: []
+        };
+
+        // 頁面加載時讀取本地進度（若有）
+        window.onload = function() {
+            const savedData = localStorage.getItem('preschool_adventure_player_v2');
+            if (savedData) {
+                player = JSON.parse(savedData);
+            }
+            updateStatusUI();
+            setTimeout(() => {
+                speak("歡迎來到暑假自習大冒險！點選一個島嶼開始挑戰吧！");
+            }, 800);
+        };
+
+        function updateStatusUI() {
+            document.getElementById('player-name').innerText = player.name;
+            document.getElementById('player-avatar').innerText = player.avatar;
+            document.getElementById('star-count').innerText = player.stars;
+            document.getElementById('coin-count').innerText = player.coins;
+            localStorage.setItem('preschool_adventure_player_v2', JSON.stringify(player));
+        }
+
+        // 語音按鈕點擊事件，方便反覆聆聽
+        function repeatSpeech(textId) {
+            const el = document.getElementById(textId);
+            if (el) {
+                speak(el.innerText);
+            }
+        }
+
+        // 彈出視窗輔助函數
+        function showModal(emoji, title, message, callback) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-emoji').innerText = emoji;
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-message').innerText = message;
+            
+            const btn = document.getElementById('modal-btn');
+            btn.onclick = function() {
+                modal.classList.add('hidden');
+                window.speechSynthesis.cancel();
+                if (callback) callback();
+            };
+            modal.classList.remove('hidden');
+
+            // 彈窗同時讀出內容
+            speak(title + "。" + message);
+        }
+
+        // 角色設定
+        function showCharacterModal() {
+            document.getElementById('char-name-input').value = player.name;
+            document.getElementById('character-modal').classList.remove('hidden');
+            speak("請輸入你的名字，並選擇一個喜歡的動物頭像吧！");
+        }
+
+        let selectedTempAvatar = "🐯";
+        function selectAvatar(avatar) {
+            selectedTempAvatar = avatar;
+            playSound('pop');
+            const buttons = document.querySelectorAll('#character-modal button');
+            buttons.forEach(btn => {
+                if(btn.innerText === avatar) {
+                    btn.classList.add('bg-orange-200', 'scale-110');
+                } else {
+                    btn.classList.remove('bg-orange-200', 'scale-110');
+                }
+            });
+        }
+
+        function saveCharacter() {
+            const nameInput = document.getElementById('char-name-input').value.trim();
+            if (nameInput) player.name = nameInput;
+            player.avatar = selectedTempAvatar;
+            updateStatusUI();
+            document.getElementById('character-modal').classList.add('hidden');
+            playSound('level-up');
+            speak("設定成功！" + player.name + "，出發去冒險吧！");
+        }
+
+        function goHome() {
+            window.speechSynthesis.cancel();
+            document.getElementById('game-zone').classList.add('hidden');
+            document.getElementById('main-map').classList.remove('hidden');
+        }
+
+        function awardReward(stars, coins) {
+            player.stars += stars;
+            player.coins += coins;
+            updateStatusUI();
+        }
+
+        // ==========================================
+        // 關卡 1：ㄅㄆㄇ魔法島 (拼音認字連連看 - 含注音與朗讀)
+        // ==========================================
+        const bopomofoQuestions = [
+            { 
+                img: "🍎", 
+                wordHtml: "<ruby>蘋<rt>ㄆㄧㄥˊ</rt></ruby><ruby>果<rt>ㄍㄨㄛˇ</rt></ruby>", 
+                wordPlain: "蘋果",
+                choices: ["ㄆ", "ㄅ", "ㄇ", "ㄈ"], 
+                correct: "ㄆ", 
+                hintHtml: "<ruby>ㄆ<rt>ㄆ</rt></ruby><ruby>ㄧ<rt>ㄧ</rt></ruby><ruby>ng<rt>ㄥˊ</rt></ruby> <ruby>ㄍ<rt>ㄍ</rt></ruby><ruby>ㄨ<rt>ㄨ</rt></ruby><ruby>ㄛ<rt>ㄛˇ</rt></ruby>",
+                hintPlain: "ㄆㄧㄥˊ ㄍㄨㄛˇ"
+            },
+            { 
+                img: "🐱", 
+                wordHtml: "<ruby>貓<rt>ㄇㄠ</rt></ruby><ruby>咪<rt>ㄇㄧ</rt></ruby>", 
+                wordPlain: "貓咪",
+                choices: ["ㄋ", "ㄇ", "ㄌ", "ㄎ"], 
+                correct: "ㄇ", 
+                hintHtml: "<ruby>ㄇ<rt>ㄇ</rt></ruby><ruby>ㄠ<rt>ㄠ</rt></ruby> <ruby>ㄇ<rt>ㄇ</rt></ruby><ruby>ㄧ<rt>ㄧ</rt></ruby>",
+                hintPlain: "ㄇㄠ ㄇㄧ"
+            },
+            { 
+                img: "🚗", 
+                wordHtml: "<ruby>汽<rt>ㄑㄧˋ</rt></ruby><ruby>車<rt>ㄔㄜ</rt></ruby>", 
+                wordPlain: "汽車",
+                choices: ["ㄑ", "ㄆ", "ㄗ", "ㄕ"], 
+                correct: "ㄑ", 
+                hintHtml: "<ruby>ㄑ<rt>ㄑ</rt></ruby><ruby>ㄧ<rt>ㄧˋ</rt></ruby> <ruby>ㄔ<rt>ㄔ</rt></ruby><ruby>ㄜ<rt>ㄜ</rt></ruby>",
+                hintPlain: "ㄑㄧˋ ㄔㄜ"
+            },
+            { 
+                img: "🍉", 
+                wordHtml: "<ruby>西<rt>ㄒㄧ</rt></ruby><ruby>瓜<rt>ㄍㄨㄚ</rt></ruby>", 
+                wordPlain: "西瓜",
+                choices: ["ㄒ", "ㄏ", "ㄕ", "ㄐ"], 
+                correct: "ㄒ", 
+                hintHtml: "<ruby>ㄒ<rt>ㄒ</rt></ruby><ruby>ㄧ<rt>ㄧ</rt></ruby> <ruby>ㄍ<rt>ㄍ</rt></ruby><ruby>ㄨ<rt>ㄨ</rt></ruby><ruby>ㄚ<rt>ㄚ</rt></ruby>",
+                hintPlain: "ㄒㄧ ㄍㄨㄚ"
+            },
+            { 
+                img: "🐘", 
+                wordHtml: "<ruby>大<rt>ㄉㄚˋ</rt></ruby><ruby>象<rt>ㄒㄧㄤˋ</rt></ruby>", 
+                wordPlain: "大象",
+                choices: ["ㄉ", "ㄊ", "ㄌ", "ㄍ"], 
+                correct: "ㄉ", 
+                hintHtml: "<ruby>ㄉ<rt>ㄉ</rt></ruby><ruby>ㄚˋ<rt>ㄚˋ</rt></ruby> <ruby>ㄒ<rt>ㄒ</rt></ruby><ruby>ㄧ<rt>ㄧ</rt></ruby><ruby>ㄤˋ<rt>ㄤˋ</rt></ruby>",
+                hintPlain: "ㄉㄚˋ ㄒㄧㄤˋ"
+            }
+        ];
+        let bopomofoIndex = 0;
+
+        function startBopomofoGame() {
+            bopomofoIndex = 0;
+            loadBopomofoQuestion();
+        }
+
+        function loadBopomofoQuestion() {
+            const question = bopomofoQuestions[bopomofoIndex];
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            const textToSpeak = `請選出這個物品開頭第一個注音符號是什麼？它是 ${question.wordPlain}，拼音是 ${question.hintPlain}`;
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <!-- 頂部導覽 -->
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-rose-700 ruby-sm">
+                            <ruby>ㄅ<rt>ㄅ</rt></ruby><ruby>ㄆ<rt>ㄆ</rt></ruby><ruby>ㄇ<rt>ㄇ</rt></ruby> 
+                            <ruby>魔<rt>ㄇㄛˊ</rt></ruby><ruby>法<rt>ㄈㄚˇ</rt></ruby><ruby>島<rt>ㄉㄠˇ</rt></ruby>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="speak('${textToSpeak}')" class="bg-rose-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                            <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                        </div>
+                    </div>
+
+                    <!-- 題目主體 -->
+                    <div class="flex-1 flex flex-col justify-center items-center my-4">
+                        <div class="text-8xl mb-2 bouncing">${question.img}</div>
+                        <div id="q-text" class="text-2xl font-black text-rose-600 mb-1">
+                            ${question.wordHtml}
+                        </div>
+                        <div class="bg-rose-50 text-rose-800 text-sm px-4 py-1 rounded-full font-semibold border border-rose-200 flex items-center gap-1">
+                            拼音：${question.hintHtml}
+                        </div>
+                        <p class="text-slate-500 text-xs mt-3">請在下面選出它第一個注音符號：</p>
+                    </div>
+
+                    <!-- 選項按鈕區 -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        ${question.choices.map(choice => `
+                            <button onclick="checkBopomofoAnswer('${choice}')" class="bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 py-3 rounded-2xl text-3xl font-black text-rose-700 transition-all active:scale-95 shadow-sm">
+                                ${choice}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            // 自動語音朗讀
+            speak(textToSpeak);
+        }
+
+        function checkBopomofoAnswer(selected) {
+            const question = bopomofoQuestions[bopomofoIndex];
+            if (selected === question.correct) {
+                playSound('correct');
+                showModal("🎉", "答對囉！", `這是 ${question.wordPlain}，第一個注音符號是 ${question.correct}！`, () => {
+                    bopomofoIndex++;
+                    if (bopomofoIndex < bopomofoQuestions.length) {
+                        loadBopomofoQuestion();
+                    } else {
+                        playSound('level-up');
+                        awardReward(5, 10);
+                        showModal("🏆", "太厲害了！", "你通過了ㄅㄆㄇ魔法島的特訓！獲得 5 顆星和 10 個金幣！", goHome);
+                    }
+                });
+            } else {
+                playSound('wrong');
+                showModal("💡", "再試試看！", `這是 ${question.wordPlain}，你可以試著讀看看第一個注音發音喔！`);
+            }
+        }
+
+        // ==========================================
+        // 關卡 2：精靈數學島 (圖形化加減法 - 含注音與朗讀)
+        // ==========================================
+        const mathQuestions = [
+            { 
+                questionHtml: "<ruby>數<rt>ㄕㄨˇ</rt></ruby><ruby>數<rt>ㄕㄨˇ</rt></ruby><ruby>看<rt>ㄎㄢˋ</rt></ruby>，這裡有幾顆<ruby>草<rt>ㄘㄠˇ</rt></ruby><ruby>莓<rt>ㄇㄟˊ</rt></ruby>？", 
+                questionPlain: "數數看，這裡有幾顆草莓？",
+                items: "🍓🍓🍓🍓", 
+                answer: 4, 
+                choices: [2, 3, 4, 5] 
+            },
+            { 
+                questionHtml: "2隻<ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>青<rt>ㄑㄧㄥ</rt></ruby><ruby>蛙<rt>ㄨㄚ</rt></ruby> 加 3隻<ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>青<rt>ㄑㄧㄥ</rt></ruby><ruby>蛙<rt>ㄨㄚ</rt></ruby>，一共幾隻？", 
+                questionPlain: "2隻小青蛙 加 3隻小青蛙，一共有幾隻？",
+                items: "🐸🐸 + 🐸🐸🐸", 
+                answer: 5, 
+                choices: [4, 5, 6, 7] 
+            },
+            { 
+                questionHtml: "4個<ruby>香<rt>ㄒㄧㄤ</rt></ruby><ruby>蕉<rt>ㄐㄧㄠ</rt></ruby> 吃掉 1個，還剩下幾個？", 
+                questionPlain: "4個香蕉 吃掉 1個，還剩下幾個？",
+                items: "🍌🍌🍌🍌 ➡️ 🍌", 
+                answer: 3, 
+                choices: [2, 3, 4, 5] 
+            },
+            { 
+                questionHtml: "1隻<ruby>獅<rt>ㄕ</rt></ruby><ruby>子<rt>ㄗ˙</rt></ruby> 和 1隻<ruby>獅<rt>ㄕ</rt></ruby><ruby>子<rt>ㄗ˙</rt></ruby>，合起來有幾隻？", 
+                questionPlain: "1隻獅子 和 1隻獅子，合起來有幾隻？",
+                items: "🦁 + 🦁", 
+                answer: 2, 
+                choices: [1, 2, 3, 4] 
+            },
+            { 
+                questionHtml: "5隻<ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>魚<rt>ㄩˊ</rt></ruby> 游走 2隻，還剩幾隻？", 
+                questionPlain: "5隻小魚 游走 2隻，還剩幾隻？",
+                items: "🐟🐟🐟🐟🐟 ➡️ 🐟🐟", 
+                answer: 3, 
+                choices: [1, 2, 3, 4] 
+            }
+        ];
+        let mathIndex = 0;
+
+        function startMathGame() {
+            mathIndex = 0;
+            loadMathQuestion();
+        }
+
+        function loadMathQuestion() {
+            const question = mathQuestions[mathIndex];
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            const textToSpeak = question.questionPlain;
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-blue-700 ruby-sm">
+                            <ruby>精<rt>ㄐㄧㄥ</rt></ruby><ruby>靈<rt>ㄌㄧㄥˊ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>島<rt>ㄉㄠˇ</rt></ruby>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="speak('${textToSpeak}')" class="bg-blue-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                            <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col justify-center items-center my-6 text-center">
+                        <p class="text-xl font-black text-slate-700 mb-6 px-4 leading-relaxed">
+                            ${question.questionHtml}
+                        </p>
+                        <div class="bg-blue-50/50 border border-blue-100 rounded-3xl px-6 py-6 mb-4 tracking-widest text-4xl select-none">
+                            ${question.items}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-2 mb-4">
+                        ${question.choices.map(choice => `
+                            <button onclick="checkMathAnswer(${choice})" class="bg-blue-100 hover:bg-blue-200 border-2 border-blue-300 py-4 rounded-xl text-3xl font-black text-blue-800 transition-all active:scale-95 shadow-sm">
+                                ${choice}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            speak(textToSpeak);
+        }
+
+        function checkMathAnswer(selected) {
+            const question = mathQuestions[mathIndex];
+            if (selected === question.answer) {
+                playSound('correct');
+                showModal("🎉", "算對囉！", `你好聰明！答案就是 ${question.answer}！`, () => {
+                    mathIndex++;
+                    if (mathIndex < mathQuestions.length) {
+                        loadMathQuestion();
+                    } else {
+                        playSound('level-up');
+                        awardReward(5, 10);
+                        showModal("🏆", "恭喜通過！", "你順利完成了所有精靈數學挑戰！獲得 5 顆星和 10 個金幣！", goHome);
+                    }
+                });
+            } else {
+                playSound('wrong');
+                showModal("💡", "再算一次！", "用小手指數一數畫面上可愛的圖案喔！");
+            }
+        }
+
+        // ==========================================
+        // 關卡 3：數字跳跳樂 (累加跳荷葉 - 含注音與朗讀)
+        // ==========================================
+        let multiTarget = 2; 
+        let multiCurrentStep = 1;
+
+        function startMultiplicationGame() {
+            multiTarget = 2;
+            multiCurrentStep = 1;
+            loadMultiplicationGame();
+        }
+
+        function loadMultiplicationGame() {
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            const nextCorrectAnswer = multiTarget * multiCurrentStep;
+            let choices = [nextCorrectAnswer];
+            while (choices.length < 4) {
+                let offset = Math.floor(Math.random() * 5) - 2;
+                if (offset !== 0) {
+                    let alt = nextCorrectAnswer + offset;
+                    if (alt > 0 && !choices.includes(alt)) {
+                        choices.push(alt);
+                    }
+                }
+            }
+            choices.sort(() => Math.random() - 0.5);
+
+            const titlePlain = `小青蛙要跳荷葉，${multiTarget} 乘以 ${multiCurrentStep} 是多少呢？`;
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-emerald-700 ruby-sm">
+                            <ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>字<rt>ㄗˋ</rt></ruby><ruby>跳<rt>ㄊㄧㄠˋ</rt></ruby><ruby>跳<rt>ㄊㄧㄠˋ</rt></ruby><ruby>樂<rt>ㄌㄜˋ</rt></ruby>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="speak('${titlePlain}')" class="bg-emerald-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                            <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col justify-center items-center my-4">
+                        <div class="text-center bg-white border-4 border-emerald-400 p-5 rounded-3xl shadow-lg w-full max-w-xs relative mt-4">
+                            <div class="absolute -top-10 left-1/2 -translate-x-1/2 text-6xl bouncing">🐸</div>
+                            <h4 class="text-emerald-600 font-bold text-sm mb-2 mt-4">
+                                <ruby>青<rt>ㄑㄧㄥ</rt></ruby><ruby>蛙<rt>ㄨㄚ</rt></ruby><ruby>跳<rt>ㄊㄧㄠˋ</rt></ruby><ruby>荷<rt>ㄏㄜˊ</rt></ruby><ruby>葉<rt>ㄧㄝˋ</rt></ruby>
+                            </h4>
+                            <div class="text-4xl font-extrabold text-emerald-700 my-3">
+                                ${multiTarget} ✖️ ${multiCurrentStep} = ❓
+                            </div>
+                            <p class="text-xs text-slate-500 font-bold leading-relaxed">
+                                <ruby>這<rt>ㄓㄜˋ</rt></ruby><ruby>是<rt>ㄕˋ</rt></ruby> ${multiCurrentStep} <ruby>個<rt>ㄍㄜ˙</rt></ruby> ${multiTarget} <ruby>相<rt>ㄒㄧㄤ</rt></ruby><ruby>加<rt>ㄐㄧㄚ</rt></ruby><ruby>喔<rt>ㄛ</rt></ruby>！
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        ${choices.map(choice => `
+                            <button onclick="checkMultiAnswer(${choice})" class="bg-emerald-50 hover:bg-emerald-100 border-2 border-emerald-300 py-4 rounded-2xl text-3xl font-black text-emerald-700 transition-all active:scale-95 shadow-sm">
+                                ${choice}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            speak(titlePlain);
+        }
+
+        function checkMultiAnswer(selected) {
+            const correctAnswer = multiTarget * multiCurrentStep;
+            if (selected === correctAnswer) {
+                playSound('correct');
+                showModal("💚", "啵！跳過去了！", `${multiTarget} 乘以 ${multiCurrentStep} 就是 ${correctAnswer}！`, () => {
+                    multiCurrentStep++;
+                    if (multiCurrentStep <= 5) {
+                        loadMultiplicationGame();
+                    } else {
+                        if (multiTarget === 2) {
+                            showModal("🎉", "進階挑戰！", "小青蛙接下來要挑戰 5 的乘法荷葉囉！準備好了嗎？", () => {
+                                multiTarget = 5;
+                                multiCurrentStep = 1;
+                                loadMultiplicationGame();
+                            });
+                        } else {
+                            playSound('level-up');
+                            awardReward(5, 10);
+                            showModal("🏆", "數字跳跳小超人！", "你學會了 2 和 5 的累加乘法概念！獲得 5 顆星和 10 個金幣！", goHome);
+                        }
+                    }
+                });
+            } else {
+                playSound('wrong');
+                showModal("💡", "掉進水裡了！", `算一算，${multiCurrentStep} 個 ${multiTarget} 加在一起是多少呢？再試試！`);
+            }
+        }
+
+        // ==========================================
+        // 關卡 4：英文單字泡泡 (大小寫與拼音 - 含語音提示)
+        // ==========================================
+        const englishQuestions = [
+            { type: "match", display: "A", detail: "大寫 A，請找出小寫的 a", detailPlain: "大寫 A，請找出小寫的 a", answer: "a", choices: ["a", "b", "c", "d"] },
+            { type: "match", display: "B", detail: "大寫 B，請找出小寫的 b", detailPlain: "大寫 B，請找出小寫的 b", answer: "b", choices: ["p", "d", "b", "q"] },
+            { type: "spell", display: "🐱", detailHtml: "<ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>貓<rt>ㄇㄠ</rt></ruby> (C-A-T)", detailPlain: "小貓，請拼出 C A T", answer: "CAT", scramble: ["A", "T", "C"] },
+            { type: "spell", display: "🐶", detailHtml: "<ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>狗<rt>ㄍㄡˇ</rt></ruby> (D-O-G)", detailPlain: "小狗，請拼出 D O G", answer: "DOG", scramble: ["O", "G", "D"] },
+            { type: "match", display: "R", detail: "大寫 R，請找出小寫的 r", detailPlain: "大寫 R，請找出小寫的 r", answer: "r", choices: ["n", "m", "r", "p"] }
+        ];
+        let englishIndex = 0;
+        let spellingInput = [];
+
+        function startEnglishGame() {
+            englishIndex = 0;
+            loadEnglishQuestion();
+        }
+
+        function loadEnglishQuestion() {
+            const question = englishQuestions[englishIndex];
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            spellingInput = [];
+
+            if (question.type === "match") {
+                const textToSpeak = question.detailPlain;
+
+                gameZone.innerHTML = `
+                    <div class="flex flex-col h-full justify-between">
+                        <div class="flex justify-between items-center pb-2 border-b">
+                            <span class="font-bold text-purple-700 ruby-sm">
+                                <ruby>英<rt>ㄧㄥ</rt></ruby><ruby>文<rt>ㄨㄣˊ</rt></ruby>
+                                <ruby>泡<rt>ㄆㄠˋ</rt></ruby><ruby>泡<rt>ㄆㄠˋ</rt></ruby>
+                            </span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="speak('${textToSpeak}')" class="bg-purple-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                                <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col justify-center items-center my-6">
+                            <div class="text-8xl font-bold text-purple-600 mb-2 bouncing">${question.display}</div>
+                            <p class="text-slate-500 text-sm font-bold mb-4">請在下面選出配對的小寫字母：</p>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-2 mb-4">
+                            ${question.choices.map(choice => `
+                                <button onclick="checkEnglishAnswer('${choice}')" class="bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 w-16 h-16 rounded-full text-3xl font-bold text-purple-800 transition-all active:scale-95 flex items-center justify-center mx-auto shadow-md">
+                                    ${choice}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                speak(textToSpeak);
+            } else if (question.type === "spell") {
+                const textToSpeak = question.detailPlain;
+
+                gameZone.innerHTML = `
+                    <div class="flex flex-col h-full justify-between">
+                        <div class="flex justify-between items-center pb-2 border-b">
+                            <span class="font-bold text-purple-700 ruby-sm">
+                                <ruby>英<rt>ㄧㄥ</rt></ruby><ruby>文<rt>ㄨㄣˊ</rt></ruby>
+                                <ruby>泡<rt>ㄆㄠˋ</rt></ruby><ruby>泡<rt>ㄆㄠˋ</rt></ruby>
+                            </span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="speak('${textToSpeak}')" class="bg-purple-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                                <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 flex flex-col justify-center items-center my-4 text-center">
+                            <div class="text-8xl mb-2">${question.display}</div>
+                            <p class="text-slate-600 text-base font-bold mb-1">${question.detailHtml}</p>
+                            <p class="text-slate-400 text-xs mb-4">請依順序點選下方泡泡，拼出正確英文單字：</p>
+                            
+                            <!-- 拼字框 -->
+                            <div id="spelling-display" class="flex space-x-2 justify-center min-h-[50px] mb-4">
+                                ${Array(question.answer.length).fill().map(() => `<span class="border-b-4 border-purple-400 w-10 text-3xl font-bold text-purple-600">_</span>`).join('')}
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center space-x-4 mb-6">
+                            ${question.scramble.map((letter, idx) => `
+                                <button id="letter-btn-${idx}" onclick="pressLetterBubble('${letter}', 'letter-btn-${idx}')" class="bg-purple-100 hover:bg-purple-200 border-2 border-purple-300 w-16 h-16 rounded-full text-3xl font-bold text-purple-800 transition-all active:scale-95 flex items-center justify-center shadow-md">
+                                    ${letter}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                speak(textToSpeak);
+            }
+        }
+
+        function pressLetterBubble(letter, btnId) {
+            playSound('pop');
+            spellingInput.push(letter);
+            document.getElementById(btnId).style.visibility = 'hidden';
+
+            const displayDiv = document.getElementById('spelling-display');
+            const targetLength = englishQuestions[englishIndex].answer.length;
+            
+            let htmlStr = "";
+            for (let i = 0; i < targetLength; i++) {
+                if (spellingInput[i]) {
+                    htmlStr += `<span class="border-b-4 border-purple-400 w-10 text-3xl font-bold text-purple-600">${spellingInput[i]}</span>`;
+                } else {
+                    htmlStr += `<span class="border-b-4 border-purple-400 w-10 text-3xl font-bold text-purple-400">_</span>`;
+                }
+            }
+            displayDiv.innerHTML = htmlStr;
+
+            if (spellingInput.length === targetLength) {
+                const finalWord = spellingInput.join('');
+                setTimeout(() => {
+                    checkEnglishAnswer(finalWord);
+                }, 350);
+            }
+        }
+
+        function checkEnglishAnswer(selected) {
+            const question = englishQuestions[englishIndex];
+            if (selected === question.answer) {
+                playSound('correct');
+                showModal("🎉", "太棒了！", `正確答案就是 ${question.answer}！`, () => {
+                    englishIndex++;
+                    if (englishIndex < englishQuestions.length) {
+                        loadEnglishQuestion();
+                    } else {
+                        playSound('level-up');
+                        awardReward(5, 10);
+                        showModal("🏆", "英文小高材生！", "你順利過關了，英文實力又變強囉！獲得 5 顆星和 10 個金幣！", goHome);
+                    }
+                });
+            } else {
+                playSound('wrong');
+                showModal("💡", "拼錯了唷！", "沒關係，我們重新再試一次拼拼看！", () => {
+                    loadEnglishQuestion();
+                });
+            }
+        }
+
+        // ==========================================
+        // 關卡 5：弟子規智慧樹 (常規生活品德 - 含注音與朗讀)
+        // ==========================================
+        const diziguiQuestions = [
+            { 
+                textHtml: "「<ruby>父<rt>ㄈㄨˋ</rt></ruby><ruby>母<rt>ㄇㄨˇ</rt></ruby><ruby>呼<rt>ㄏㄨ</rt></ruby>，＿＿＿＿」", 
+                textPlain: "父母呼，後面要接哪一句呢？",
+                answer: "應勿緩", 
+                answerHtml: "<ruby>應<rt>ㄧㄥˋ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>緩<rt>ㄏㄨㄢˇ</rt></ruby>",
+                choices: [
+                    { val: "應勿緩", html: "<ruby>應<rt>ㄧㄥˋ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>緩<rt>ㄏㄨㄢˇ</rt></ruby>" },
+                    { val: "行勿懶", html: "<ruby>行<rt>ㄒㄧㄥˊ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>懶<rt>ㄌㄢˇ</rt></ruby>" },
+                    { val: "須順承", html: "<ruby>須<rt>ㄒㄩ</rt></ruby><ruby>順<rt>ㄕㄨㄣˋ</rt></ruby><ruby>承<rt>ㄔㄥˊ</rt></ruby>" },
+                    { val: "生氣氣", html: "<ruby>生<rt>ㄕㄥ</rt></ruby><ruby>氣<rt>ㄑㄧˋ</rt></ruby><ruby>氣<rt>ㄑㄧˋ</rt></ruby>" }
+                ],
+                moral: "爸爸媽媽叫我們的時候，要立刻答應並走過去，不可以假裝沒聽到唷！" 
+            },
+            { 
+                textHtml: "「<ruby>父<rt>ㄈㄨˋ</rt></ruby><ruby>母<rt>ㄇㄨˇ</rt></ruby><ruby>命<rt>ㄇㄧㄥˋ</rt></ruby>，＿＿＿＿」", 
+                textPlain: "父母命，後面要接哪一句呢？",
+                answer: "行勿懶", 
+                answerHtml: "<ruby>行<rt>ㄒㄧㄥˊ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>懶<rt>ㄌㄢˇ</rt></ruby>",
+                choices: [
+                    { val: "應勿緩", html: "<ruby>應<rt>ㄧㄥˋ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>緩<rt>ㄏㄨㄢˇ</rt></ruby>" },
+                    { val: "行勿懶", html: "<ruby>行<rt>ㄒㄧㄥˊ</rt></ruby><ruby>勿<rt>ㄨˋ</rt></ruby><ruby>懶<rt>ㄌㄢˇ</rt></ruby>" },
+                    { val: "須順承", html: "<ruby>須<rt>ㄒㄩ</rt></ruby><ruby>順<rt>ㄕㄨㄣˋ</rt></ruby><ruby>承<rt>ㄔㄥˊ</rt></ruby>" },
+                    { val: "去睡覺", html: "<ruby>去<rt>ㄑㄩˋ</rt></ruby><ruby>睡<rt>ㄕㄨㄟˋ</rt></ruby><ruby>覺<rt>ㄐㄧㄠˋ</rt></ruby>" }
+                ],
+                moral: "爸爸媽媽交代我們做的事情，要勤快努力地去完成，不偷懶！" 
+            },
+            { 
+                textHtml: "「<ruby>出<rt>ㄔㄨ</rt></ruby><ruby>必<rt>ㄅㄧˋ</rt></ruby><ruby>告<rt>ㄍㄠˋ</rt></ruby>，＿＿＿＿」", 
+                textPlain: "出必告，後面要接哪一句呢？",
+                answer: "反必面", 
+                answerHtml: "<ruby>反<rt>ㄈㄢˇ</rt></ruby><ruby>必<rt>ㄅㄧˋ</rt></ruby><ruby>面<rt>ㄇㄧㄢˋ</rt></ruby>",
+                choices: [
+                    { val: "反必面", html: "<ruby>反<rt>ㄈㄢˇ</rt></ruby><ruby>必<rt>ㄅㄧˋ</rt></ruby><ruby>面<rt>ㄇㄧㄢˋ</rt></ruby>" },
+                    { val: "居有常", html: "<ruby>居<rt>ㄐㄩ</rt></ruby><ruby>有<rt>ㄧㄡˇ</rt></ruby><ruby>常<rt>ㄔㄤˊ</rt></ruby>" },
+                    { val: "業無變", html: "<ruby>業<rt>ㄧㄝˋ</rt></ruby><ruby>無<rt>ㄨˊ</rt></ruby><ruby>變<rt>ㄅㄧㄢˋ</rt></ruby>" },
+                    { val: "出去玩", html: "<ruby>出<rt>ㄔㄨ</rt></ruby><ruby>去<rt>ㄑㄩˋ</rt></ruby><ruby>玩<rt>ㄨㄢˊ</rt></ruby>" }
+                ],
+                moral: "出門時要主動跟爸爸媽媽說一聲，回家時也要打招呼，這樣家人才放心！" 
+            }
+        ];
+        let diziguiIndex = 0;
+
+        function startDiziguiGame() {
+            diziguiIndex = 0;
+            loadDiziguiQuestion();
+        }
+
+        function loadDiziguiQuestion() {
+            const question = diziguiQuestions[diziguiIndex];
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            const textToSpeak = question.textPlain;
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-amber-700 ruby-sm">
+                            <ruby>弟<rt>ㄉㄧˋ</rt></ruby><ruby>子<rt>ㄗˇ</rt></ruby><ruby>規<rt>ㄍㄨㄟ</rt></ruby>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="speak('${textToSpeak}')" class="bg-amber-500 text-white rounded-full p-2 text-sm shadow">🔊 聽題目</button>
+                            <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col justify-center items-center my-6 text-center">
+                        <div class="text-6xl mb-4">🌳</div>
+                        <p class="text-slate-500 text-xs mb-3">請在下面選出正確的話填入空中：</p>
+                        <h2 class="text-2xl font-black text-amber-800 tracking-wider bg-amber-50 px-4 py-4 rounded-2xl border-2 border-amber-200">
+                            ${question.textHtml}
+                        </h2>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        ${question.choices.map(choice => `
+                            <button onclick="checkDiziguiAnswer('${choice.val}')" class="bg-amber-50 hover:bg-amber-100 border-2 border-amber-300 py-3 rounded-2xl text-lg font-bold text-amber-800 transition-all active:scale-95 shadow-sm">
+                                ${choice.html}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            speak(textToSpeak);
+        }
+
+        function checkDiziguiAnswer(selected) {
+            const question = diziguiQuestions[diziguiIndex];
+            if (selected === question.answer) {
+                playSound('correct');
+                showModal("💡 生活小智慧", "答對囉！", question.moral, () => {
+                    diziguiIndex++;
+                    if (diziguiIndex < diziguiQuestions.length) {
+                        loadDiziguiQuestion();
+                    } else {
+                        playSound('level-up');
+                        awardReward(5, 15);
+                        showModal("🏆", "常規生活小達人！", "你學會了孝順、禮貌與生活常規！獲得 5 顆星和 15 個金幣！", goHome);
+                    }
+                });
+            } else {
+                playSound('wrong');
+                showModal("💡", "再想一想喔！", "別擔心，可以按下上面的 🔊 喇叭聽看看題目提示唷。");
+            }
+        }
+
+        // ==========================================
+        // 額外頁面：獎品屋 (Star Shop - 含注音與朗讀)
+        // ==========================================
+        const shopItems = [
+            { id: "toy1", name: "太空火箭", price: 10, emoji: "🚀", desc: "帶著夢想飛宇宙！" },
+            { id: "toy2", name: "彩虹寶球", price: 20, emoji: "🔮", desc: "夜裡閃亮亮！" },
+            { id: "toy3", name: "小熊時鐘", price: 30, emoji: "⏰", desc: "幫你準時起床上學！" },
+            { id: "toy4", name: "暴龍神蛋", price: 50, emoji: "🦖", desc: "聽說會孵出超大暴龍！" }
+        ];
+
+        function showShop() {
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            const textToSpeak = "歡迎來到獎品屋！在這裡可以用獲得的金幣兌換有趣的玩具。";
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-amber-600 ruby-sm">
+                            <ruby>獎<rt>ㄐㄧㄤˇ</rt></ruby><ruby>品<rt>ㄆㄧㄣˇ</rt></ruby><ruby>屋<rt>ㄨ</rt></ruby>
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="speak('${textToSpeak}')" class="bg-amber-500 text-white rounded-full p-2 text-sm shadow">🔊 聽介紹</button>
+                            <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                        </div>
+                    </div>
+
+                    <div class="my-3 text-center">
+                        <p class="text-xs text-slate-500">
+                            <ruby>用<rt>ㄩㄥˋ</rt></ruby><ruby>金<rt>ㄐㄧㄣ</rt></ruby><ruby>幣<rt>ㄅㄧˋ</rt></ruby>
+                            <ruby>換<rt>ㄏㄨㄢˋ</rt></ruby><ruby>好<rt>ㄏㄠˇ</rt></ruby><ruby>玩<rt>ㄨㄢˊ</rt></ruby><ruby>的<rt>ㄉㄜ˙</rt></ruby>
+                            <ruby>玩<rt>ㄨㄢˊ</rt></ruby><ruby>具<rt>ㄐㄩˋ</rt></ruby>！
+                        </p>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto no-scrollbar space-y-3 max-h-[50vh] py-2">
+                        ${shopItems.map(item => {
+                            const isBought = player.unlockedToys.includes(item.id);
+                            return `
+                                <div class="bg-amber-50/50 border border-amber-200 rounded-2xl p-3 flex justify-between items-center shadow-sm">
+                                    <div class="flex items-center space-x-3">
+                                        <span class="text-4xl bg-white p-2 rounded-xl border">${item.emoji}</span>
+                                        <div>
+                                            <h4 class="font-bold text-slate-800 text-sm">${item.name}</h4>
+                                            <p class="text-[10px] text-slate-400">${item.desc}</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        ${isBought ? `
+                                            <span class="bg-slate-300 text-white font-bold text-xs px-3 py-1.5 rounded-full">已擁有</span>
+                                        ` : `
+                                            <button onclick="buyToy('${item.id}', ${item.price})" class="bg-amber-400 hover:bg-amber-500 text-white font-bold text-xs px-3 py-1.5 rounded-full active:scale-95 transition-transform flex items-center space-x-1">
+                                                <span>🪙 ${item.price}</span>
+                                            </button>
+                                        `}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <div class="bg-amber-100 p-2 rounded-2xl text-center text-xs font-bold text-amber-800 mt-2">
+                        玩具收藏箱： ${player.unlockedToys.length > 0 ? player.unlockedToys.map(tid => shopItems.find(t=>t.id===tid)?.emoji).join(' ') : '還沒有任何玩具喔！'}
+                    </div>
+                </div>
+            `;
+            speak(textToSpeak);
+        }
+
+        function buyToy(toyId, price) {
+            if (player.coins >= price) {
+                player.coins -= price;
+                player.unlockedToys.push(toyId);
+                updateStatusUI();
+                playSound('level-up');
+                showModal("🎉 兌換成功！", "恭喜得到新玩具！", "已經放進你的收藏箱裡囉！", showShop);
+            } else {
+                playSound('wrong');
+                showModal("🪙 金幣不夠喔！", "加油賺金幣！", "多去玩ㄅㄆㄇ、精靈數學，就能拿到好多金幣喔！");
+            }
+        }
+
+        // ==========================================
+        // 額外頁面：家長指引
+        // ==========================================
+        function showInfo() {
+            const gameZone = document.getElementById('game-zone');
+            document.getElementById('main-map').classList.add('hidden');
+            gameZone.classList.remove('hidden');
+
+            gameZone.innerHTML = `
+                <div class="flex flex-col h-full justify-between">
+                    <div class="flex justify-between items-center pb-2 border-b">
+                        <span class="font-bold text-slate-700">💡 家長學習指引</span>
+                        <button onclick="goHome()" class="text-xs bg-slate-200 px-2 py-1 rounded">離開</button>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto no-scrollbar space-y-4 my-4 text-xs text-slate-600 pr-1">
+                        <div class="bg-amber-50 border border-amber-100 p-3 rounded-xl">
+                            <h4 class="font-bold text-amber-800 mb-1">👶 專為準小一生設計：</h4>
+                            <p class="leading-relaxed">本系統全面導入 <strong>HTML Ruby 注音符號系統</strong> 與 <strong>TTS 語音導讀技術</strong>。即使孩子目前不認得國字，也能透過聽覺與注音符號引導，進行自主性的啟蒙自學。</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <h4 class="font-bold text-slate-800">📌 家長陪讀與回饋：</h4>
+                            <ul class="list-disc list-inside space-y-1.5 leading-relaxed">
+                                <li>點擊右上角的 <strong>🔊 聽題目</strong>，系統會自動用適合兒童的語調慢速唸出題目，孩子可以重複點選反覆聆聽，強化聽說與圖像連結。</li>
+                                <li><strong>ㄅㄆㄇ魔法島</strong>：針對小一開學前 10 週的注音課，重點訓練孩子聽出字詞的「首音」聲母。</li>
+                                <li><strong>精靈數學島</strong>：利用小動物和水果等視覺圖像，訓練 10 以內的合成與分解。</li>
+                                <li><strong>品德智慧樹</strong>：每道弟子規題目答對時，都會提供親切易懂的白話解釋，讓生活習慣與禮儀深植孩子心中。</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="text-center text-slate-400 text-[10px] pb-2">
+                        幼升小暑假自習大冒險 V01 原版整理版
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+
+    <!--
+        V01 原版整理版修正紀錄：
+        1. 檔名與頁尾版本改為 V01。
+        2. 修正「出必告」注音：告 ㄍㄨˋ → ㄍㄠˋ。
+        3. 修正「行勿懶」選項誤字：物 → 勿。
+        4. 修正「西瓜」題目選項重複 ㄒ 的問題。
+        5. 將「九九乘法跳跳樂」顯示名稱調整為「數字跳跳樂」，保留原玩法與程式結構。
+    -->
+
+    <!-- PWA Service Worker 註冊 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(function(reg) { console.log('PWA Service Worker registered:', reg.scope); })
+                    .catch(function(err) { console.warn('PWA Service Worker registration failed:', err); });
+            });
+        }
+    </script>
+</body>
+</html>
